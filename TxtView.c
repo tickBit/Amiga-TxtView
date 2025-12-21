@@ -64,7 +64,7 @@ void main (int argc, char **argv)
 		}
     }
     
-	// argv[1] sis. tiedoston nimen
+	// argv[1] has the filename
 	file_handle = (struct FileHandle *)Open(argv[1], MODE_OLDFILE );
   
   	if( file_handle == NULL )
@@ -255,7 +255,9 @@ int printToWindow(char *newTxt, struct RastPort *rp, struct Window *win, int tex
 	UWORD baseLine = rp->Font->tf_Baseline;				
 		
 	for (int j = 0; j < rows; j++) {
-						
+		
+		// "Before V47, this function suffered from an off-by-one error
+		//  in case the input font was not fixed width."
 		TextExtent(rp, newTxt + prevI, i-prevI+1, &constrainingExtent);
 								
 		while(constrainingExtent.te_Width < win->Width - win->BorderLeft - win->BorderRight && newTxt[i] != 10) {
