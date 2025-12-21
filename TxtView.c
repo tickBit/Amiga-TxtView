@@ -107,7 +107,6 @@ void main (int argc, char **argv)
         }
     }
 	
-	// varmista muistin varauksella, että muisti riittää ao:lle!	
 	if (newTxt[newI] != 10) {
 		newTxt[newI] = 10;
 		newTxt[newI+1] = '\0';
