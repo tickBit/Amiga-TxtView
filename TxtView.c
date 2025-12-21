@@ -52,12 +52,16 @@ void main (int argc, char **argv)
 	int currentCursor, textCursor;
 		
 	if (argc != 2 && argc != 3) {
-		printf("Wrong number of arguments.\nTxtTest [file] [tab size]\nTab size is optional.");
+		printf("Wrong number of arguments.\nTxtTest [file] [tab size]\nTab size is optional. Max. tab size = 16");
 		exit(0);
 	}
 	
     if (argc == 3) {
         tabSize = atoi(argv[2]);
+		if (tabsize > 16) {
+			printf("Too large tab size!\n");
+			exit(0);
+		}
     }
     
 	// argv[1] sis. tiedoston nimen
@@ -83,13 +87,13 @@ void main (int argc, char **argv)
         if (txtFile[i] == 9) tabs++;
     }
     
-    newTxt = (char *)malloc(bufferSize + tabSize * tabs);
+    newTxt = (char *)malloc(bufferSize + tabSize * tabs + 1);
     	
     int newI = 0;
 	
 	printf("%c", txtFile[bufferSize-1]);
 	
-	// count rows, replace tabs with spaces, filter ASCII 13 (carriage return) out
+	// replace tabs with spaces, filter ASCII 13 (carriage return) out
     for (int i = 0; i < bufferSize; i++) {
 		
         if (txtFile[i] != 9 && txtFile[i] != 13) {
@@ -118,7 +122,11 @@ void main (int argc, char **argv)
 	DiskfontBase = OpenLibrary("diskfont.library", 47);
 	
 	if (!(IntuitionBase || GfxBase || DiskfontBase)) {
-		printf("Some (or all) of the V47 libraries could not be opened.\n");
+		
+		if (IntuitionBase) CloseLibrary(IntuitionBase); else printf("Failed to open intuition.library v47\n");
+		if (GfxBase) CloseLibrary(GfxBase); else printf("Failed to open graphics.library v47\n");
+		if (DiskfontBase) CloseLibrary(DiskfontBase); else printf("Failed to open diskfont.library v47\n");
+		
 		free(txtFile);
 		exit(0);
 	}
