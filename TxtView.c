@@ -49,7 +49,7 @@ void main (int argc, char **argv)
 	char *txtFile, *newTxt;
 	int bufferSize;
 	WORD tabSize = 3;
-	int currentCursor;
+	int currentCursor, textCursor;
 		
 	if (argc != 2 && argc != 3) {
 		printf("Wrong number of arguments.\nTxtTest [file] [tab size]\nTab size is optional.");
@@ -144,7 +144,7 @@ void main (int argc, char **argv)
 			SetAPen(rp,1);
 			
 			currentCursor = 0;
-			printToWindow(newTxt, rp, win, currentCursor);
+			textCursor = printToWindow(newTxt, rp, win, currentCursor);
 			            
 		    while (going)
 		    {
@@ -183,9 +183,11 @@ void main (int argc, char **argv)
 				
 						SetAPen(rp, rp->BgPen);
 						RectFill(rp, left, top, right, bottom);
-					
-						currentCursor = printToWindow(newTxt, rp, win, currentCursor);
-
+						
+						SetAPen(rp, 1);
+						currentCursor = printToWindow(newTxt, rp, win, textCursor);
+						textCursor = currentCursor;
+						
 						break;
 						
 				    break;
@@ -201,7 +203,7 @@ void main (int argc, char **argv)
 					RectFill(rp, left, top, right, bottom);
 					
 					SetAPen(rp, 1);
-					printToWindow(newTxt, rp, win, currentCursor);
+					textCursor = printToWindow(newTxt, rp, win, currentCursor);
 					
 					break;
 			    }
@@ -273,7 +275,7 @@ int printToWindow(char *newTxt, struct RastPort *rp, struct Window *win, int tex
 		
 	}
 	
-	return i;
+	return prevI;
 }
 
 void SetupFont(struct Window *win)
