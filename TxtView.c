@@ -31,6 +31,7 @@ struct Library *GfxBase;
 struct Library *DiskfontBase;
 
 struct TextFont *courier18 = NULL;
+BOOL endOfFile = FALSE;
 
 /*****************************************************************************/
 
@@ -48,7 +49,8 @@ void main (int argc, char **argv)
 	char *txtFile, *newTxt;
 	int bufferSize;
 	WORD tabSize = 3;
-					
+	int currentCursor;
+		
 	if (argc != 2 && argc != 3) {
 		printf("Wrong number of arguments.\nTxtTest [file] [tab size]\nTab size is optional.");
 		exit(0);
@@ -96,6 +98,8 @@ void main (int argc, char **argv)
         }
     }
 	
+	newTxt[newI] = '\0';
+	
     free(txtFile);
 	
 	IntuitionBase = OpenLibrary("intuition.library", 47);
@@ -113,7 +117,7 @@ void main (int argc, char **argv)
 	if (win = OpenWindowTags (NULL,
 				      WA_Title,		"TxtView",
 				      WA_InnerWidth,	320,
-				      WA_InnerHeight,	8 + 6 + 34,
+				      WA_InnerHeight,	184,
 				      WA_IDCMP,		IDCMP_FLAGS,
 				      WA_DragBar,	TRUE,
 				      WA_DepthGadget,	TRUE,
@@ -138,7 +142,9 @@ void main (int argc, char **argv)
 	
 			SetupFont(win);
 			SetAPen(rp,1);
-			printToWindow(newTxt, rp, win);
+			
+			currentCursor = 0;
+			printToWindow(newTxt, rp, win, currentCursor);
 			            
 		    while (going)
 		    {
@@ -165,10 +171,27 @@ void main (int argc, char **argv)
 					    going = FALSE;
 					    break;
 				    }
+					
+					case ' ':
+					
+						if (endOfFile == TRUE) break;
+						
+						left   = win->BorderLeft;
+						top    = win->BorderTop;
+						right  = win->Width  - win->BorderRight  - 1;
+						bottom = win->Height - win->BorderBottom - 1;
+				
+						SetAPen(rp, rp->BgPen);
+						RectFill(rp, left, top, right, bottom);
+					
+						currentCursor = printToWindow(newTxt, rp, win, currentCursor);
+
+						break;
+						
 				    break;
 					
 				case IDCMP_NEWSIZE:
-					
+										
 					left   = win->BorderLeft;
 					top    = win->BorderTop;
 					right  = win->Width  - win->BorderRight  - 1;
@@ -178,7 +201,7 @@ void main (int argc, char **argv)
 					RectFill(rp, left, top, right, bottom);
 					
 					SetAPen(rp, 1);
-					printToWindow(newTxt, rp, win);
+					printToWindow(newTxt, rp, win, currentCursor);
 					
 					break;
 			    }
@@ -200,14 +223,14 @@ void main (int argc, char **argv)
 	free(newTxt);
 }
 
-void printToWindow(char *newTxt, struct RastPort *rp, struct Window *win) {
+int printToWindow(char *newTxt, struct RastPort *rp, struct Window *win, int textCursor) {
 	
 	struct TextExtent textExtent, constrainingExtent;
 	WORD maxWidth  = win->Width  - win->BorderLeft - win->BorderRight;		
-	int i = 0;
+	int i = textCursor;
 	
 	BYTE extra;
-	WORD prevI = 0;
+	int prevI = textCursor;
 	WORD fHeight = rp->Font->tf_YSize;
 	WORD rows = (win->Height - win->BorderTop - win->BorderBottom) / fHeight;
 	UWORD baseLine = rp->Font->tf_Baseline;				
@@ -218,31 +241,39 @@ void printToWindow(char *newTxt, struct RastPort *rp, struct Window *win) {
 						
 		TextExtent(rp, newTxt + prevI, i-prevI+1, &constrainingExtent);
 								
-		while(constrainingExtent.te_Width < win->Width - win->BorderLeft - win->BorderRight) {
+		while(constrainingExtent.te_Width < win->Width - win->BorderLeft - win->BorderRight && newTxt[i] != 10) {
 			
 			i++;
 			
-			// line feed
-			if (newTxt[i] == 10) {
-				extra++;
+			if (newTxt[i] == '\0') {
+				printf("End of file\n");
+				i = textCursor - 1;
+				endOfFile = TRUE;
 				break;
 			}
-			
 			
 			TextExtent(rp, newTxt + prevI, i-prevI+1, &constrainingExtent);
 	
 		}
                                 
 		Move(rp, win->BorderLeft, win->BorderTop + baseLine + fHeight * j);
-		Text(rp, newTxt + prevI, i - prevI);
 		
-		if (extra == 0) prevI = i; else {
-			prevI = i;	//
-			prevI++;	// skip ASCII 10
+		if (newTxt[i] == 10 && i == prevI) {
+			i++;
+			prevI = i;
+		} else if (newTxt[i] == 10 && i > prevI) {
+			Text(rp, newTxt + prevI, i - prevI);
+			i++;
+			prevI = i;
+		} else {
+			Text(rp, newTxt + prevI, i - prevI);
+			prevI = i;
 		}
 		
 		
-	}				
+	}
+	
+	return i;
 }
 
 void SetupFont(struct Window *win)
