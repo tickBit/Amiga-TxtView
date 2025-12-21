@@ -70,7 +70,7 @@ void main (int argc, char **argv)
   	}
 	
 	Seek((BPTR)file_handle, OFFSET_BEGINNING, OFFSET_END);
-	bufferSize = Seek((BPTR)file_handle, OFFSET_CURRENT, OFFSET_BEGINNING);
+	bufferSize = Seek((BPTR)file_handle, OFFSET_CURRENT, OFFSET_BEGINNING) + 1;
 	
 	txtFile = (char *)malloc(bufferSize);
 	
@@ -84,9 +84,14 @@ void main (int argc, char **argv)
     }
     
     newTxt = (char *)malloc(bufferSize + tabSize * tabs);
-    
+    	
     int newI = 0;
+	
+	printf("%c", txtFile[bufferSize-1]);
+	
+	// count rows, replace tabs with spaces, filter ASCII 13 (carriage return) out
     for (int i = 0; i < bufferSize; i++) {
+		
         if (txtFile[i] != 9 && txtFile[i] != 13) {
 			newTxt[newI] = txtFile[i];
 			newI++;
@@ -98,7 +103,13 @@ void main (int argc, char **argv)
         }
     }
 	
-	newTxt[newI] = '\0';
+	// varmista muistin varauksella, että muisti riittää ao:lle!	
+	if (newTxt[newI] != 10) {
+		newTxt[newI] = 10;
+		newTxt[newI+1] = '\0';
+	} else {
+		newTxt[newI+1] = '\0';
+	}
 	
     free(txtFile);
 	
@@ -144,7 +155,7 @@ void main (int argc, char **argv)
 			SetAPen(rp,1);
 			
 			currentCursor = 0;
-			textCursor = printToWindow(newTxt, rp, win, currentCursor);
+			textCursor = printToWindow(newTxt, rp, win, currentCursor, FALSE);
 			            
 		    while (going)
 		    {
@@ -185,7 +196,7 @@ void main (int argc, char **argv)
 						RectFill(rp, left, top, right, bottom);
 						
 						SetAPen(rp, 1);
-						currentCursor = printToWindow(newTxt, rp, win, textCursor);
+						currentCursor = printToWindow(newTxt, rp, win, textCursor, FALSE);
 						textCursor = currentCursor;
 						
 						break;
@@ -203,7 +214,7 @@ void main (int argc, char **argv)
 					RectFill(rp, left, top, right, bottom);
 					
 					SetAPen(rp, 1);
-					textCursor = printToWindow(newTxt, rp, win, currentCursor);
+					textCursor = printToWindow(newTxt, rp, win, currentCursor, TRUE);
 					
 					break;
 			    }
@@ -225,53 +236,54 @@ void main (int argc, char **argv)
 	free(newTxt);
 }
 
-int printToWindow(char *newTxt, struct RastPort *rp, struct Window *win, int textCursor) {
+int printToWindow(char *newTxt, struct RastPort *rp, struct Window *win, int textCursor, BOOL resize) {
 	
 	struct TextExtent textExtent, constrainingExtent;
 	WORD maxWidth  = win->Width  - win->BorderLeft - win->BorderRight;		
 	int i = textCursor;
 	
-	BYTE extra;
 	int prevI = textCursor;
 	WORD fHeight = rp->Font->tf_YSize;
 	WORD rows = (win->Height - win->BorderTop - win->BorderBottom) / fHeight;
 	UWORD baseLine = rp->Font->tf_Baseline;				
-					
+		
 	for (int j = 0; j < rows; j++) {
-	
-		extra = 0;
 						
 		TextExtent(rp, newTxt + prevI, i-prevI+1, &constrainingExtent);
 								
 		while(constrainingExtent.te_Width < win->Width - win->BorderLeft - win->BorderRight && newTxt[i] != 10) {
 			
 			i++;
-			
+
 			if (newTxt[i] == '\0') {
-				printf("End of file\n");
-				i = textCursor - 1;
 				endOfFile = TRUE;
-				break;
+				break;	
 			}
-			
+					
 			TextExtent(rp, newTxt + prevI, i-prevI+1, &constrainingExtent);
 	
 		}
-                                
-		Move(rp, win->BorderLeft, win->BorderTop + baseLine + fHeight * j);
-		
-		if (newTxt[i] == 10 && i == prevI) {
-			i++;
+        
+		if (endOfFile == FALSE || (endOfFile == TRUE && resize == TRUE)) {
+			                        
+			Move(rp, win->BorderLeft, win->BorderTop + baseLine + fHeight * j);
+			
+			if (newTxt[i] == 10 && i == prevI) {
+				i++;
+			} else if (newTxt[i] == 10 && i > prevI) {
+				Text(rp, newTxt + prevI, i - prevI);
+				i++;
+			} else {
+				Text(rp, newTxt + prevI, i - prevI);
+			}
+			
 			prevI = i;
-		} else if (newTxt[i] == 10 && i > prevI) {
-			Text(rp, newTxt + prevI, i - prevI);
-			i++;
-			prevI = i;
-		} else {
-			Text(rp, newTxt + prevI, i - prevI);
-			prevI = i;
+			
+			if (newTxt[i] == '\0') {
+				endOfFile = TRUE;
+				return textCursor;
+			}
 		}
-		
 		
 	}
 	
