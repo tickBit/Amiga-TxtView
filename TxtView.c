@@ -1,0 +1,261 @@
+/*
+
+*/
+
+#include <dos/dos.h>
+#include <exec/types.h>
+#include <exec/libraries.h>
+#include <intuition/intuition.h>
+#include <intuition/intuitionbase.h>
+#include <diskfont/diskfont.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+#include <clib/macros.h>
+#include <clib/dos_protos.h>
+#include <clib/exec_protos.h>
+#include <clib/intuition_protos.h>
+#include <clib/diskfont_protos.h>
+/*****************************************************************************/
+
+#define	IDCMP_FLAGS	IDCMP_CLOSEWINDOW | IDCMP_VANILLAKEY | IDCMP_GADGETUP \
+			| IDCMP_MOUSEMOVE | IDCMP_INTUITICKS | IDCMP_MOUSEBUTTONS | IDCMP_NEWSIZE
+
+/*****************************************************************************/
+
+/*****************************************************************************/
+
+extern struct Library *SysBase, *DOSBase;
+struct Library *IntuitionBase;
+struct Library *GfxBase;
+struct Library *DiskfontBase;
+
+struct TextFont *courier18 = NULL;
+
+/*****************************************************************************/
+
+void main (int argc, char **argv)
+{
+    struct IntuiMessage *imsg;
+    struct Screen *scr;
+    struct Window *win;
+    BOOL going = TRUE;
+    ULONG sigr;
+	struct FileHandle *file_handle;
+	struct RastPort *rp;
+	
+	
+	char *txtFile, *newTxt;
+	int bufferSize;
+	WORD tabSize = 3;
+					
+	if (argc != 2 && argc != 3) {
+		printf("Wrong number of arguments.\nTxtTest [file] [tab size]\nTab size is optional.");
+		exit(0);
+	}
+	
+    if (argc == 3) {
+        tabSize = atoi(argv[2]);
+    }
+    
+	// argv[1] sis. tiedoston nimen
+	file_handle = (struct FileHandle *)Open(argv[1], MODE_OLDFILE );
+  
+  	if( file_handle == NULL )
+  	{
+    	printf("Could not open %s\n", argv[1]);
+    	exit(0);
+  	}
+	
+	Seek((BPTR)file_handle, OFFSET_BEGINNING, OFFSET_END);
+	bufferSize = Seek((BPTR)file_handle, OFFSET_CURRENT, OFFSET_BEGINNING);
+	
+	txtFile = (char *)malloc(bufferSize);
+	
+	if (Read((BPTR)file_handle, txtFile, bufferSize) != bufferSize) printf("Something went wrong while reading the file\n");
+	
+	Close((BPTR)file_handle);
+	
+    int tabs = 0;
+    for (int i = 0; i < bufferSize; i++) {
+        if (txtFile[i] == 9) tabs++;
+    }
+    
+    newTxt = (char *)malloc(bufferSize + tabSize * tabs);
+    
+    int newI = 0;
+    for (int i = 0; i < bufferSize; i++) {
+        if (txtFile[i] != 9 && txtFile[i] != 13) {
+			newTxt[newI] = txtFile[i];
+			newI++;
+        } else if (txtFile[i] == 9) {
+            for (int t = 0; t < tabSize; t++) {
+				newTxt[newI] = ' ';
+                newI++;
+            }
+        }
+    }
+	
+    free(txtFile);
+	
+	IntuitionBase = OpenLibrary("intuition.library", 47);
+	GfxBase = OpenLibrary("graphics.library", 47);
+	DiskfontBase = OpenLibrary("diskfont.library", 47);
+	
+	if (!(IntuitionBase || GfxBase || DiskfontBase)) {
+		printf("Some (or all) of the V47 libraries could not be opened.\n");
+		free(txtFile);
+		exit(0);
+	}
+	
+	scr = ((struct IntuitionBase *)IntuitionBase)->FirstScreen;
+
+	if (win = OpenWindowTags (NULL,
+				      WA_Title,		"TxtView",
+				      WA_InnerWidth,	320,
+				      WA_InnerHeight,	8 + 6 + 34,
+				      WA_IDCMP,		IDCMP_FLAGS,
+				      WA_DragBar,	TRUE,
+				      WA_DepthGadget,	TRUE,
+				      WA_CloseGadget,	TRUE,
+				      WA_SimpleRefresh,	TRUE,
+				      WA_NoCareRefresh,	TRUE,
+				      WA_Activate,	TRUE,
+				      WA_SizeGadget,	TRUE,
+				      WA_MinWidth,	30,
+				      WA_MinHeight,	scr->BarHeight + 1 + 34,
+				      WA_MaxWidth,	-1,
+				      WA_MaxHeight,	-1,
+				      WA_CustomScreen,	scr,
+				      TAG_DONE))
+	    {
+			rp = win->RPort;
+			
+			WORD left   = win->BorderLeft;
+			WORD top    = win->BorderTop;
+			WORD right  = win->Width  - win->BorderRight  - 1;
+			WORD bottom = win->Height - win->BorderBottom - 1;
+	
+			SetupFont(win);
+			SetAPen(rp,1);
+			printToWindow(newTxt, rp, win);
+			            
+		    while (going)
+		    {
+			sigr = Wait ((1L << win->UserPort->mp_SigBit | SIGBREAKF_CTRL_C));
+
+			if (sigr & SIGBREAKF_CTRL_C)
+			    going = FALSE;
+
+			while (imsg = (struct IntuiMessage *) GetMsg (win->UserPort))
+			{
+			    switch (imsg->Class)
+			    {
+				case IDCMP_CLOSEWINDOW:
+				    going = FALSE;
+				    break;
+
+				case IDCMP_VANILLAKEY:
+					
+				    switch (imsg->Code)
+				    {
+					case  27:
+					case 'q':
+					case 'Q':
+					    going = FALSE;
+					    break;
+				    }
+				    break;
+					
+				case IDCMP_NEWSIZE:
+					
+					left   = win->BorderLeft;
+					top    = win->BorderTop;
+					right  = win->Width  - win->BorderRight  - 1;
+					bottom = win->Height - win->BorderBottom - 1;
+			
+					SetAPen(rp, rp->BgPen);
+					RectFill(rp, left, top, right, bottom);
+					
+					SetAPen(rp, 1);
+					printToWindow(newTxt, rp, win);
+					
+					break;
+			    }
+
+			    ReplyMsg ((struct Message *) imsg);
+			}
+
+		
+	    }
+		CloseWindow (win);
+    }
+	
+    if (courier18) CloseFont(courier18);
+	
+    CloseLibrary(IntuitionBase);
+	CloseLibrary(GfxBase);
+	CloseLibrary(DiskfontBase);
+	
+	free(newTxt);
+}
+
+void printToWindow(char *newTxt, struct RastPort *rp, struct Window *win) {
+	
+	struct TextExtent textExtent, constrainingExtent;
+	WORD maxWidth  = win->Width  - win->BorderLeft - win->BorderRight;		
+	int i = 0;
+	
+	BYTE extra;
+	WORD prevI = 0;
+	WORD fHeight = rp->Font->tf_YSize;
+	WORD rows = (win->Height - win->BorderTop - win->BorderBottom) / fHeight;
+	UWORD baseLine = rp->Font->tf_Baseline;				
+					
+	for (int j = 0; j < rows; j++) {
+	
+		extra = 0;
+						
+		TextExtent(rp, newTxt + prevI, i-prevI+1, &constrainingExtent);
+								
+		while(constrainingExtent.te_Width < win->Width - win->BorderLeft - win->BorderRight) {
+			
+			i++;
+			
+			// line feed
+			if (newTxt[i] == 10) {
+				extra++;
+				break;
+			}
+			
+			
+			TextExtent(rp, newTxt + prevI, i-prevI+1, &constrainingExtent);
+	
+		}
+                                
+		Move(rp, win->BorderLeft, win->BorderTop + baseLine + fHeight * j);
+		Text(rp, newTxt + prevI, i - prevI);
+		
+		if (extra == 0) prevI = i; else {
+			prevI = i;	//
+			prevI++;	// skip ASCII 10
+		}
+		
+		
+	}				
+}
+
+void SetupFont(struct Window *win)
+{
+    struct TextAttr ta =
+    {
+        "courier.font",
+        18,0,0
+    };
+
+    courier18 = OpenDiskFont(&ta);
+    if (courier18)
+    {
+        SetFont(win->RPort, courier18);
+    }
+}
