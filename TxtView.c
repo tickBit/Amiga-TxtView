@@ -5,6 +5,8 @@
 		
 	This programs is for AmigaOS 3.2.x so, that the needed library versions are at least 47
 	
+	Not quite finished, just wanted to brush up my C skills a bit...
+	
 */
 
 #include <dos/dos.h>
@@ -42,7 +44,7 @@ BOOL endOfFile = FALSE;
 
 /*****************************************************************************/
 
-void main (int argc, char **argv)
+int main (int argc, char **argv)
 {
     struct IntuiMessage *imsg;
     struct Screen *scr;
@@ -256,7 +258,7 @@ void main (int argc, char **argv)
 	
 	Close((BPTR)file_handle);
 	
-	return;
+	return RETURN_OK;
 }
 
 
