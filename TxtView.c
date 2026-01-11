@@ -91,8 +91,8 @@ void main (int argc, char **argv)
 	newTxt = (char *)readBytesToBuffer(fileSize, tabSize, txtBuffer, newTxt, file_handle, &pages, &totalReadBytes);
 	
 	if (newTxt == NULL) {
-		free(txtBuffer);
-		free(newTxt);
+		if (txtBuffer) free(txtBuffer);
+		if (newTxt) free(newTxt);
 		Close((BPTR)file_handle);
 		exit(0);
 	}
@@ -109,6 +109,7 @@ void main (int argc, char **argv)
 		
 		if (newTxt) free(newTxt);
 		if (txtBuffer) free(txtBuffer);
+		Close((BPTR)file_handle);
 		exit(0);
 	}
 	
@@ -184,12 +185,11 @@ void main (int argc, char **argv)
 						}
 						
 						// error in reading file
-						/*
 						if (newTxt == NULL) {
 							ReplyMsg ((struct Message *) imsg);
 							
-							free(txtBuffer);
-							free(newTxt);
+							if (txtBuffer) free(txtBuffer);
+							if (newTxt) free(newTxt);
 							Close((BPTR)file_handle);
 							CloseWindow(win);
 							
@@ -201,7 +201,6 @@ void main (int argc, char **argv)
 	
 							exit(0);
 						}
-						*/
 						
 						left   = win->BorderLeft;
 						top    = win->BorderTop;
@@ -254,6 +253,10 @@ void main (int argc, char **argv)
 	
 	if (txtBuffer) free(txtBuffer);
 	if (newTxt) free(newTxt);
+	
+	Close((BPTR)file_handle);
+	
+	return;
 }
 
 
