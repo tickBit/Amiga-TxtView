@@ -63,7 +63,7 @@ int main (int argc, char **argv)
 	int chrs = 0;
 	
 	if (argc != 2 && argc != 3) {
-		printf("Wrong number of arguments.\nTxtTest [file] [tab size]\nTab size is optional. Max. tab size = 16");
+		printf("Wrong number of arguments.\nTxtView [file] [tab size]\nTab size is optional. Max. tab size = 16\n");
 		exit(0);
 	}
 	
@@ -213,9 +213,9 @@ int main (int argc, char **argv)
 						RectFill(rp, left, top, right, bottom);
 						
 						SetAPen(rp, 1);
-						textCursor = currentCursor;
-						currentCursor = printToWindow(newTxt, rp, win, textCursor, FALSE, pages, fileSize);
 						
+						currentCursor = textCursor;
+						textCursor = printToWindow(newTxt, rp, win, textCursor, FALSE, pages, fileSize);
 						
 						break;
 						
@@ -233,8 +233,8 @@ int main (int argc, char **argv)
 					
 					SetAPen(rp, 1);
 										
-					currentCursor = textCursor;	
 					printToWindow(newTxt, rp, win, currentCursor, TRUE, pages, fileSize);
+					
 					// if needed, more characters must be read!
 					break;
 			    }
