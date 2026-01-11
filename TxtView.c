@@ -26,6 +26,8 @@
 #define	IDCMP_FLAGS	IDCMP_CLOSEWINDOW | IDCMP_VANILLAKEY | IDCMP_GADGETUP \
 			| IDCMP_MOUSEMOVE | IDCMP_INTUITICKS | IDCMP_MOUSEBUTTONS | IDCMP_NEWSIZE
 
+#define FILE_BUF_SIZE 8192
+
 /*****************************************************************************/
 
 /*****************************************************************************/
@@ -50,12 +52,14 @@ void main (int argc, char **argv)
 	struct FileHandle *file_handle;
 	struct RastPort *rp;
 	
+	char *txtBuffer, *newTxt;
+	long fileSize, readBytes;
 	
-	char *txtFile, *newTxt;
-	int bufferSize;
 	WORD tabSize = 3;
 	int currentCursor, textCursor;
-		
+	long pages = 0, totalReadBytes = 0;
+	int chrs = 0;
+	
 	if (argc != 2 && argc != 3) {
 		printf("Wrong number of arguments.\nTxtTest [file] [tab size]\nTab size is optional. Max. tab size = 16");
 		exit(0);
@@ -63,7 +67,7 @@ void main (int argc, char **argv)
 	
     if (argc == 3) {
         tabSize = atoi(argv[2]);
-		if (tabsize > 16) {
+		if (tabSize > 16) {
 			printf("Too large tab size!\n");
 			exit(0);
 		}
@@ -78,48 +82,20 @@ void main (int argc, char **argv)
     	exit(0);
   	}
 	
+	// read file size
 	Seek((BPTR)file_handle, OFFSET_BEGINNING, OFFSET_END);
-	bufferSize = Seek((BPTR)file_handle, OFFSET_CURRENT, OFFSET_BEGINNING) + 1;
-	
-	txtFile = (char *)malloc(bufferSize);
-	
-	if (Read((BPTR)file_handle, txtFile, bufferSize) != bufferSize) printf("Something went wrong while reading the file\n");
-	
-	Close((BPTR)file_handle);
-	
-    int tabs = 0;
-    for (int i = 0; i < bufferSize; i++) {
-        if (txtFile[i] == 9) tabs++;
-    }
-    
-    newTxt = (char *)malloc(bufferSize + tabSize * tabs + 1);
-    	
-    int newI = 0;
-	
-	printf("%c", txtFile[bufferSize-1]);
-	
-	// replace tabs with spaces, filter ASCII 13 (carriage return) out
-    for (int i = 0; i < bufferSize; i++) {
+	fileSize = Seek((BPTR)file_handle, OFFSET_CURRENT, OFFSET_BEGINNING) + 1;
 		
-        if (txtFile[i] != 9 && txtFile[i] != 13) {
-			newTxt[newI] = txtFile[i];
-			newI++;
-        } else if (txtFile[i] == 9) {
-            for (int t = 0; t < tabSize; t++) {
-				newTxt[newI] = ' ';
-                newI++;
-            }
-        }
-    }
+	txtBuffer = (char *)malloc(FILE_BUF_SIZE);
 	
-	if (newTxt[newI] != 10) {
-		newTxt[newI] = 10;
-		newTxt[newI+1] = '\0';
-	} else {
-		newTxt[newI+1] = '\0';
+	newTxt = (char *)readBytesToBuffer(fileSize, tabSize, txtBuffer, newTxt, file_handle, &pages, &totalReadBytes);
+	
+	if (newTxt == NULL) {
+		free(txtBuffer);
+		free(newTxt);
+		Close((BPTR)file_handle);
+		exit(0);
 	}
-	
-    free(txtFile);
 	
 	IntuitionBase = OpenLibrary("intuition.library", 47);
 	GfxBase = OpenLibrary("graphics.library", 47);
@@ -131,7 +107,7 @@ void main (int argc, char **argv)
 		if (GfxBase) CloseLibrary(GfxBase); else printf("Failed to open graphics.library v47\n");
 		if (DiskfontBase) CloseLibrary(DiskfontBase); else printf("Failed to open diskfont.library v47\n");
 		
-		free(txtFile);
+		free(txtBuffer);
 		exit(0);
 	}
 	
@@ -167,7 +143,7 @@ void main (int argc, char **argv)
 			SetAPen(rp,1);
 			
 			currentCursor = 0;
-			textCursor = printToWindow(newTxt, rp, win, currentCursor, FALSE);
+			textCursor = printToWindow(newTxt, rp, win, currentCursor, FALSE, pages, fileSize);
 			            
 		    while (going)
 		    {
@@ -199,6 +175,31 @@ void main (int argc, char **argv)
 					
 						if (endOfFile == TRUE) break;
 						
+						if (textCursor >= 7000) {
+							Seek((BPTR)file_handle, textCursor, OFFSET_CURRENT);	
+							newTxt = (char *)readBytesToBuffer(fileSize, tabSize, txtBuffer, newTxt, file_handle, &pages, &totalReadBytes);
+							textCursor = 0;
+							currentCursor = 0;
+						}
+						
+						// error in reading file
+						if (newTxt == NULL) {
+							ReplyMsg ((struct Message *) imsg);
+							
+							free(txtBuffer);
+							free(newTxt);
+							Close((BPTR)file_handle);
+							CloseWindow(win);
+							
+							if (courier18) CloseFont(courier18);
+	
+    						CloseLibrary(IntuitionBase);
+							CloseLibrary(GfxBase);
+							CloseLibrary(DiskfontBase);
+	
+							exit(0);
+						}
+						
 						left   = win->BorderLeft;
 						top    = win->BorderTop;
 						right  = win->Width  - win->BorderRight  - 1;
@@ -208,7 +209,7 @@ void main (int argc, char **argv)
 						RectFill(rp, left, top, right, bottom);
 						
 						SetAPen(rp, 1);
-						currentCursor = printToWindow(newTxt, rp, win, textCursor, FALSE);
+						currentCursor = printToWindow(newTxt, rp, win, textCursor, FALSE, pages, fileSize);
 						textCursor = currentCursor;
 						
 						break;
@@ -226,8 +227,8 @@ void main (int argc, char **argv)
 					RectFill(rp, left, top, right, bottom);
 					
 					SetAPen(rp, 1);
-					textCursor = printToWindow(newTxt, rp, win, currentCursor, TRUE);
-					
+					textCursor = printToWindow(newTxt, rp, win, currentCursor, TRUE, pages, fileSize);
+					// if needed, more characters must be read!
 					break;
 			    }
 
@@ -248,7 +249,57 @@ void main (int argc, char **argv)
 	free(newTxt);
 }
 
-int printToWindow(char *newTxt, struct RastPort *rp, struct Window *win, int textCursor, BOOL resize) {
+
+char* readBytesToBuffer(long fileSize, int tabSize, char *txtBuffer, char *newTxt, BPTR file_handle, long *pages, long *totalReadBytes) {
+
+	long readBytes = 0;
+	
+	// read bytes of file into txtBuffer
+	readBytes = Read(file_handle, txtBuffer, FILE_BUF_SIZE);
+	
+	if (!(readBytes != FILE_BUF_SIZE || readBytes != fileSize)) {
+		printf("Something went wrong while reading the file\n");
+		return NULL;
+	}
+	
+	(*totalReadBytes) += readBytes;
+	
+	
+    int tabs = 0;
+    for (int i = 0; i < readBytes; i++) {
+        if (txtBuffer[i] == 9) tabs++;
+    }
+    
+	if (sizeof(newTxt) > 0) free(newTxt);
+	
+    newTxt = (char *)malloc(FILE_BUF_SIZE + tabSize * tabs + 1);
+    	
+    int newI = 0;
+		
+	// replace tabs with spaces, filter ASCII 13 (carriage return) out
+    for (int i = 0; i < readBytes; i++) {
+		
+        if (txtBuffer[i] != 9 && txtBuffer[i] != 13) {
+			newTxt[newI] = txtBuffer[i];
+			newI++;
+        } else if (txtBuffer[i] == 9) {
+            for (int t = 0; t < tabSize; t++) {
+				newTxt[newI] = ' ';
+                newI++;
+            }
+        }
+    }
+
+	(*pages)++;
+		
+	if (*totalReadBytes == fileSize) {
+		newTxt[newI] = '\0';
+	}
+	
+	return newTxt;
+}
+
+int printToWindow(char *newTxt, struct RastPort *rp, struct Window *win, int textCursor, BOOL resize, long pages, int fileSize) {
 	
 	struct TextExtent textExtent, constrainingExtent;
 	WORD maxWidth  = win->Width  - win->BorderLeft - win->BorderRight;		
@@ -263,7 +314,7 @@ int printToWindow(char *newTxt, struct RastPort *rp, struct Window *win, int tex
 		
 		// "Before V47, this function suffered from an off-by-one error
 		//  in case the input font was not fixed width."
-		TextExtent(rp, newTxt + prevI, i-prevI+1, &constrainingExtent);
+		TextExtent(rp, newTxt + prevI, i-prevI + 1, &constrainingExtent);
 								
 		while(constrainingExtent.te_Width < win->Width - win->BorderLeft - win->BorderRight && newTxt[i] != 10) {
 			
@@ -271,7 +322,7 @@ int printToWindow(char *newTxt, struct RastPort *rp, struct Window *win, int tex
 
 			if (newTxt[i] == '\0') {
 				endOfFile = TRUE;
-				break;	
+				break;
 			}
 					
 			TextExtent(rp, newTxt + prevI, i-prevI+1, &constrainingExtent);
@@ -282,20 +333,14 @@ int printToWindow(char *newTxt, struct RastPort *rp, struct Window *win, int tex
 			                        
 			Move(rp, win->BorderLeft, win->BorderTop + baseLine + fHeight * j);
 			
-			if (newTxt[i] == 10 && i == prevI) {
-				i++;
-			} else if (newTxt[i] == 10 && i > prevI) {
-				Text(rp, newTxt + prevI, i - prevI);
-				i++;
-			} else {
-				Text(rp, newTxt + prevI, i - prevI);
-			}
+			Text(rp, newTxt + prevI, i - prevI);
+			i++;
 			
 			prevI = i;
 			
 			if (newTxt[i] == '\0') {
 				endOfFile = TRUE;
-				return textCursor;
+				break;
 			}
 		}
 		
