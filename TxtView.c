@@ -52,7 +52,7 @@ void main (int argc, char **argv)
 	struct FileHandle *file_handle;
 	struct RastPort *rp;
 	
-	char *txtBuffer, *newTxt;
+	char *txtBuffer = NULL, *newTxt = NULL;
 	long fileSize, readBytes;
 	
 	WORD tabSize = 3;
@@ -107,7 +107,8 @@ void main (int argc, char **argv)
 		if (GfxBase) CloseLibrary(GfxBase); else printf("Failed to open graphics.library v47\n");
 		if (DiskfontBase) CloseLibrary(DiskfontBase); else printf("Failed to open diskfont.library v47\n");
 		
-		free(txtBuffer);
+		if (newTxt) free(newTxt);
+		if (txtBuffer) free(txtBuffer);
 		exit(0);
 	}
 	
@@ -183,6 +184,7 @@ void main (int argc, char **argv)
 						}
 						
 						// error in reading file
+						/*
 						if (newTxt == NULL) {
 							ReplyMsg ((struct Message *) imsg);
 							
@@ -199,6 +201,7 @@ void main (int argc, char **argv)
 	
 							exit(0);
 						}
+						*/
 						
 						left   = win->BorderLeft;
 						top    = win->BorderTop;
@@ -209,8 +212,9 @@ void main (int argc, char **argv)
 						RectFill(rp, left, top, right, bottom);
 						
 						SetAPen(rp, 1);
-						currentCursor = printToWindow(newTxt, rp, win, textCursor, FALSE, pages, fileSize);
 						textCursor = currentCursor;
+						currentCursor = printToWindow(newTxt, rp, win, textCursor, FALSE, pages, fileSize);
+						
 						
 						break;
 						
@@ -227,7 +231,9 @@ void main (int argc, char **argv)
 					RectFill(rp, left, top, right, bottom);
 					
 					SetAPen(rp, 1);
-					textCursor = printToWindow(newTxt, rp, win, currentCursor, TRUE, pages, fileSize);
+										
+					currentCursor = textCursor;	
+					printToWindow(newTxt, rp, win, currentCursor, TRUE, pages, fileSize);
 					// if needed, more characters must be read!
 					break;
 			    }
@@ -246,7 +252,8 @@ void main (int argc, char **argv)
 	CloseLibrary(GfxBase);
 	CloseLibrary(DiskfontBase);
 	
-	free(newTxt);
+	if (txtBuffer) free(txtBuffer);
+	if (newTxt) free(newTxt);
 }
 
 
