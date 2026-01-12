@@ -22,6 +22,8 @@ Not quite finished yet. Could be done in better way. Perhaps an alternative vers
 
 I'm planning to add possibility to change the font and its size.
 
+No AI generated code. :-)
+
 ## Picture
 
 ![TxtView](https://github.com/user-attachments/assets/b275d3eb-e0f7-4269-9656-23039e27466b)
