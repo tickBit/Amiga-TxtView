@@ -9,7 +9,7 @@ Uses Courier 18 font.
 This one needs AmigaOS 3.2.x so, that at least version 47 of the following libraries can be opened:
 
 - graphics.library
-- intuituin.library
+- intuituition.library
 - diskfont.library
 
 ## Other stuff
