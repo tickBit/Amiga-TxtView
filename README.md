@@ -4,7 +4,7 @@ Text file viewing program for Amiga. Just a C exercise to me and I wanted to use
 
 Uses Courier 18 font.
 
-## Amiga system needed
+## Amiga system required
 
 This one needs AmigaOS 3.2.x so, that at least version 47 of the following libraries can be opened:
 
