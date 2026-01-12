@@ -24,5 +24,6 @@ I'm planning to add possibility to change the font and its size.
 
 ## Picture
 
-![TxtView](https://github.com/user-attachments/assets/631fea80-e0e3-44af-99d9-88f2fafc3033)
+![TxtView](https://github.com/user-attachments/assets/b275d3eb-e0f7-4269-9656-23039e27466b)
+
 
