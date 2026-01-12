@@ -3,7 +3,7 @@
 
 	- meant for viewing text files
 		
-	This programs is for AmigaOS 3.2.x so, that the needed library versions are at least 47
+	This program is for AmigaOS 3.2.x so, that the required library versions are at least 47
 	
 	Not quite finished, just wanted to brush up my C skills a bit...
 	
