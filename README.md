@@ -9,7 +9,7 @@ Uses Courier 18 font.
 This one needs AmigaOS 3.2.x so, that at least version 47 of the following libraries can be opened:
 
 - graphics.library
-- intuituition.library
+- intuition.library
 - diskfont.library
 
 TextExtent() from graphics.library is used. From autodocs: "Before V47, this function suffered from an off-by-one error in case the input font was not fixed width."
