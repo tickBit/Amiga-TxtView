@@ -63,7 +63,7 @@ int main (int argc, char **argv)
 	int chrs = 0;
 	
 	if (argc != 2 && argc != 3) {
-		printf("Wrong number of arguments.\nTxtView [file] [tab size]\nTab size is optional. Max. tab size = 16\n");
+		printf("Wrong number of arguments.\nTxtView [file] [tab size]\nTab size is optional (default is 3). Max. tab size = 16\n");
 		exit(0);
 	}
 	
@@ -313,22 +313,25 @@ char* readBytesToBuffer(long fileSize, int tabSize, char *txtBuffer, char *newTx
 
 int printToWindow(char *newTxt, struct RastPort *rp, struct Window *win, int textCursor, BOOL resize, long pages, int fileSize) {
 	
-	struct TextExtent textExtent, constrainingExtent;
-	WORD maxWidth  = win->Width  - win->BorderLeft - win->BorderRight;		
+	struct TextExtent constrainingExtent;
+	WORD maxWidth  = win->Width - win->BorderLeft - win->BorderRight;		
 	int i = textCursor;
 	
 	int prevI = textCursor;
 	WORD fHeight = rp->Font->tf_YSize;
 	WORD rows = (win->Height - win->BorderTop - win->BorderBottom) / fHeight;
 	UWORD baseLine = rp->Font->tf_Baseline;				
-		
+	
+	WORD length = 0;
+	
 	for (int j = 0; j < rows; j++) {
 		
 		// "Before V47, this function suffered from an off-by-one error
 		//  in case the input font was not fixed width."
-		TextExtent(rp, newTxt + prevI, i-prevI + 1, &constrainingExtent);
+		if (newTxt[prevI] != 10) TextExtent(rp, newTxt + prevI, i - prevI + 1, &constrainingExtent);
+		else TextExtent(rp, newTxt + prevI + 1, i-prevI - 1, &constrainingExtent);
 								
-		while(constrainingExtent.te_Width < win->Width - win->BorderLeft - win->BorderRight && newTxt[i] != 10) {
+		while(constrainingExtent.te_Width < maxWidth && newTxt[i] != 10) {
 			
 			i++;
 
@@ -336,17 +339,24 @@ int printToWindow(char *newTxt, struct RastPort *rp, struct Window *win, int tex
 				endOfFile = TRUE;
 				break;
 			}
-					
-			TextExtent(rp, newTxt + prevI, i-prevI+1, &constrainingExtent);
+			
+			TextExtent(rp, newTxt + prevI, i-prevI + 1, &constrainingExtent);
 	
 		}
         
+		
 		if (endOfFile == FALSE || (endOfFile == TRUE && resize == TRUE)) {
-			                        
+			                      
 			Move(rp, win->BorderLeft, win->BorderTop + baseLine + fHeight * j);
 			
-			Text(rp, newTxt + prevI, i - prevI);
-			i++;
+			if (newTxt[prevI] == 10) {
+				Text(rp, newTxt + prevI + 1, i - prevI - 1);
+			} else if(newTxt[i] == 10) {
+				Text(rp, newTxt + prevI, i - prevI);
+			}
+			else {
+				Text(rp, newTxt + prevI, i - prevI);
+			}
 			
 			prevI = i;
 			
@@ -354,6 +364,8 @@ int printToWindow(char *newTxt, struct RastPort *rp, struct Window *win, int tex
 				endOfFile = TRUE;
 				break;
 			}
+			
+			i++;
 		}
 		
 	}
