@@ -340,8 +340,9 @@ int printToWindow(char *newTxt, struct RastPort *rp, struct Window *win, int tex
 				break;
 			}
 			
-			TextExtent(rp, newTxt + prevI, i-prevI + 1, &constrainingExtent);
-	
+			if (newTxt[prevI] != 10) TextExtent(rp, newTxt + prevI, i-prevI + 1, &constrainingExtent);
+			else TextExtent(rp, newTxt + prevI + 1, i-prevI, &constrainingExtent);
+			
 		}
         
 		
